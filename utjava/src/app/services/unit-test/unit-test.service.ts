@@ -37,7 +37,7 @@ export class UnitTestService {
             No omitas ningun metodos. Apunta a un coverage de 80%. `,
         },
       ],
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4.1',
       temperature: 0.5,
       max_tokens: 2048,
     });

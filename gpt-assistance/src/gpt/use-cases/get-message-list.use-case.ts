@@ -22,6 +22,6 @@ export const getMessageListUseCase = async (openai: OpenAI, options: Options) =>
 
     }));
 
-    return messages;
+    return messages.reverse();
 
 }

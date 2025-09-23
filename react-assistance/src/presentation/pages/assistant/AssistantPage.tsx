@@ -8,8 +8,6 @@ interface Message {
 }
 
 
-
-
 export const AssistantPage = () => {
 
   const [isLoading, setIsLoading] = useState(false);
@@ -75,17 +73,19 @@ export const AssistantPage = () => {
       <div className="chat-messages">
         <div className="grid grid-cols-12 gap-y-2">
           {/* Bienvenida */}
-          <GptMessage text="Buen día, soy jhba - WebCLient, ¿Cuál es tu nombre? y ¿en qué puedo ayudarte?" />
+          <GptMessage text="Buen día, tu asistente del codigo laboral Chilen, ¿Cuál es tu nombre? y ¿en qué puedo ayudarte?" />
 
           {
             messages.map( (message, index) => (
-              message.isGpt
-                ? (
-                  <GptMessage key={ index } text={ message.text } />
-                )
-                : (
-                  <MyMessage key={ index } text={ message.text } />
-                )
+
+              <GptMessage key={ index } text={ message.text } />
+              // message.isGpt
+              //   ? (
+              //     <GptMessage key={ index } text={ message.text } />
+              //   )
+              //   : (
+              //     <MyMessage key={ index } text={ message.text } />
+              //   )
                 
             ))
           }

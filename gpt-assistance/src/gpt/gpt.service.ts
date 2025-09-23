@@ -28,9 +28,9 @@ export class GptService { // Solo llama uses-cases
 
   async userQuestion(questionDto: QuestionDto) {
 
-    // const { id } = await createThreadUseCase(this.openai);
+    const { id } = await createThreadUseCase(this.openai);
 
-    // questionDto.threadId = id;
+    questionDto.threadId = id;
 
 
     const { threadId, question } = questionDto;
@@ -46,7 +46,7 @@ export class GptService { // Solo llama uses-cases
 
     const messages = await getMessageListUseCase(this.openai, { threadId });
 
-    return messages
+    return messages.reverse();
 
   }
 }

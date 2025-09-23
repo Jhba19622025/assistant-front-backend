@@ -71,3 +71,22 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](LICENSE).
+
+
+# Comandos docker
+
+docker build -t nest-local-dev -f Dockerfile .
+
+docker run --name nest-local-dev --rm -d `
+  -p 3000:3000 -p 9229:9229 `
+  -e HOST=0.0.0.0 -e PORT=3000 `
+  nest-local-dev:latest
+
+
+  ## Ver que el contenedor corre y puertos mapeados
+
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+docker logs -n 200 <NOMBRE_CONTENEDOR>
+
+# 1) Para y elimina el contenedor actual
+docker rm -f nostalgic_shtern
