@@ -1,18 +1,46 @@
-import Markdown from "react-markdown";
+// file: src/presentation/components/GptMessage.tsx
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import type { Components } from 'react-markdown';
 
-interface Props {
-  text: string;
-}
+// Tipado local para soportar `inline` sin filtrar hacia el DOM
+type CodeProps = React.ComponentPropsWithoutRef<'code'> & {
+  inline?: boolean;
+  node?: any;
+};
 
-export const GptMessage = ({ text }: Props) => {
+const CodeBlock: React.FC<CodeProps> = ({ inline, className, children, node, ...props }) => {
+  if (inline) {
+    return (
+      <code {...props} className={`px-1 py-0.5 rounded bg-white/10 ${className ?? ''}`}>
+        {children}
+      </code>
+    );
+  }
   return (
-    <div className="col-start-1 col-end-9 p-3 rounded-lg">
-      <div className="flex flex-row items-start">
-        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-600 flex-shrink-0">
-          G
-        </div>
-        <div className="relative ml-3 text-sm bg-black bg-opacity-25 pt-3 pb-2 px-4 shadow rounded-xl">
-          <Markdown>{text}</Markdown>
+    <pre className="p-3 rounded bg-white/10 overflow-x-auto">
+      <code {...props} className={className}>
+        {children}
+      </code>
+    </pre>
+  );
+};
+
+const components: Components = {
+  code: CodeBlock as Components['code'],
+  a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+};
+
+export const GptMessage: React.FC<{ text: string }> = ({ text }) => {
+  return (
+    <div className="col-start-1 col-end-12 p-3">
+      <div className="flex flex-row gap-3">
+        {/* Borde y sombra sutil para enmarcar la respuesta */}
+        <div className="flex-1 bg-white bg-opacity-5 p-4 rounded-2xl border border-white/20 shadow-sm prose prose-invert max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+            {text}
+          </ReactMarkdown>
         </div>
       </div>
     </div>

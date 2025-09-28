@@ -2,13 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background-color: #000000;
-  color: white;
-  font-family: 'Open Sans', sans-serif;
-  
+html, body, #root {
+  height: 100%;
 }
-
 
 h1 {
   @apply text-3xl font-bold mb-4;
@@ -44,7 +40,7 @@ em {
 }
 
 .chat-messages {
-  @apply flex flex-col h-full overflow-x-auto mb-4 overflow-scroll;
+  @apply flex flex-col h-full overflow-y-auto mb-4;
 }
 
 
