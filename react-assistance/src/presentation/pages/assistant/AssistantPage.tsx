@@ -102,8 +102,9 @@ export const AssistantPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [threadId, setThreadId] = useState<string>();
+
+  // Estado de archivos (para mostrar lista/descarga; subida deshabilitada)
   const [files, setFiles] = useState<ListedFile[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Evita doble submit accidental (Enter+botón)
   const submittingRef = useRef(false);
@@ -116,7 +117,7 @@ export const AssistantPage = () => {
     else createThreadUseCase().then((id) => { setThreadId(id); localStorage.setItem('threadId', id); });
   }, []);
 
-  // Cargar archivos al montar/cambiar thread y tras subir
+  // Cargar archivos al montar/cambiar thread
   const refreshFiles = async () => {
     if (!threadId) return;
     try {
@@ -155,7 +156,6 @@ export const AssistantPage = () => {
 
     try {
       const replies = await postQuestionUseCase(threadId, text); // llamada única
-
       const items = getItems(replies);
       const replyTexts = extractAssistantReply(items, text);
 
@@ -173,30 +173,7 @@ export const AssistantPage = () => {
     }
   };
 
-  const handleUpload = async (ev: React.ChangeEvent<HTMLInputElement>) => {
-    if (!threadId) return;
-    const filesToUpload = ev.target.files;
-    if (!filesToUpload || filesToUpload.length === 0) return;
-
-    setIsUploading(true);
-    try {
-      for (const file of Array.from(filesToUpload)) {
-        const form = new FormData();
-        form.append('file', file);
-        form.append('threadId', threadId);
-        const resp = await fetch(`${import.meta.env.VITE_API_BASE}/upload-file`, { method: 'POST', body: form });
-        if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
-      }
-      await refreshFiles();
-      (ev.target as HTMLInputElement).value = '';
-    } catch (e) {
-      console.error(e);
-      setMessages((prev) => [...prev, { text: '⚠️ Error al subir archivo(s).', isGpt: true }]);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
+  // Descarga de archivos (se mantiene)
   const handleDownload = async (file: ListedFile) => {
     try {
       const url = `${import.meta.env.VITE_API_BASE}/download-file?fileId=${encodeURIComponent(file.id)}`;
@@ -228,18 +205,20 @@ export const AssistantPage = () => {
         </button>
       </div>
 
-      {/* Panel de archivos */}
+      {/* Panel de archivos (subida deshabilitada) */}
       <div className="mb-4 flex flex-col gap-3">
+        {/* Botón de subir archivos deshabilitado (UI removida) */}
+        {/*
         <div className="flex items-center gap-3">
           <label className="btn-primary text-sm px-3 py-1.5 rounded-lg cursor-pointer">
-            {isUploading ? 'Subiendo…' : 'Subir archivos'}
-            <input type="file" className="hidden" multiple onChange={handleUpload} disabled={isUploading}/>
+            Subir archivos
+            <input type="file" className="hidden" multiple onChange={handleUpload}/>
           </label>
         </div>
-
+        */}
         <div className="bg-white bg-opacity-5 rounded-xl p-3 border border-white/10">
           <div className="font-semibold mb-2">
-            Archivos <span className="text-white/60">({files.length})</span>
+             <span className="text-white/60">({files.length})</span>
           </div>
           {files.length === 0 ? (
             <div className="text-sm text-white/70">No hay archivos aún.</div>
@@ -267,7 +246,7 @@ export const AssistantPage = () => {
           <GptMessage text="**Buen día**, soy tu asistente del *Código Civil* y **Leyes de Familia** de Chile. ¿En qué puedo ayudarte?" />
           {messages.map((m, i) => (m.isGpt ? <GptMessage key={i} text={m.text} /> : <UserMessageWide key={i} text={m.text} />))}
           {isLoading && (
-            <div className="col-start-1 col-end-12 fade-in grid ">
+            <div className="col-start-1 col-end-12 fade-in grid">
               <TypingLoader />
             </div>
           )}
