@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { GptMessage, MyMessage, TypingLoader, TextMessageBox } from '../../components';
+import { GptMessage, TypingLoader, TextMessageBox } from '../../components';
 import { createThreadUseCase, postQuestionUseCase } from '../../../core/use-cases';
 
 interface Message {
@@ -73,7 +73,7 @@ export const AssistantPage = () => {
       <div className="chat-messages">
         <div className="grid grid-cols-12 gap-y-2">
           {/* Bienvenida */}
-          <GptMessage text="Buen día, tu asistente del codigo laboral Chilen, ¿Cuál es tu nombre? y ¿en qué puedo ayudarte?" />
+          <GptMessage text="Buen día, Soy tu asistente del codigo Civil y Leyes de Familia de  Chile, ¿en qué puedo ayudarte?" />
 
           {
             messages.map( (message, index) => (

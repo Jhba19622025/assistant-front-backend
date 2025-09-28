@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./gpt-assistance        # <--- CORRECTO según tu estructura
+      dockerfile: Dockerfile
+    container_name: iaapp-backend
+    env_file:
+      - ./gpt-assistance/.env          # OPENAI_API_KEY, ASSISTANCE_ID
+    ports:
+      - "9090:3000"                    # backend expuesto en 9090
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./react-assistance      # <--- ajusta si tu carpeta del front cambia
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: "http://localhost:9090/api/gpt"
+    container_name: iaapp-frontend
+    depends_on:
+      - backend
+    ports:
+      - "9091:80"                      # frontend en 9091
+    restart: unless-stopped

@@ -3,7 +3,7 @@ export const createThreadUseCase = async () => {
   
   try {
     
-    const resp = await fetch(`${ import.meta.env.VITE_ASSISTANT_API}/create-thread`,{
+    const resp = await fetch(`${ import.meta.env.VITE_API_BASE}/create-thread`,{
       method: 'POST'
     });
 

@@ -6,7 +6,7 @@ export const PostQuestionUtUseCase = async ( threadId: string, question: string 
 
 try {
 
-    const resp = await fetch(`${ import.meta.env.VITE_ASSISTANT_API }/generate`, {
+    const resp = await fetch(`${ import.meta.env.VITE_API_BASE }/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
