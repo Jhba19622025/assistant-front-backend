@@ -1,22 +1,15 @@
 // file: src/presentation/pages/assistant/AssistantPage.tsx
 import { useEffect, useRef, useState } from 'react';
-import { GptMessage, TypingLoader, TextMessageBox, MyMessage } from '../../components';
+import { GptMessage, TypingLoader, TextMessageBox } from '../../components';
 import { createThreadUseCase, postQuestionUseCase } from '../../../core/use-cases';
 
 type AnyObj = Record<string, any>;
 type Role = 'assistant' | 'user' | string;
 
-interface ChatMessage {
-  text: string;
-  isGpt: boolean;
-}
+interface ChatMessage { text: string; isGpt: boolean; }
+interface ListedFile { id: string; name: string; size?: number; }
 
-interface ListedFile {
-  id: string;
-  name: string;
-  size?: number;
-}
-
+/* ---------------------------- Helpers de parsing --------------------------- */
 const isObj = (v: unknown): v is AnyObj => typeof v === 'object' && v !== null;
 
 const toStrings = (content: any): string[] => {
@@ -42,9 +35,7 @@ const toStrings = (content: any): string[] => {
 // Extrae array de mensajes desde múltiples formatos: Array directo, {messages}, {data}
 const getItems = (input: unknown): AnyObj[] => {
   if (Array.isArray(input)) {
-    if (input.every((m) => isObj(m) && ('rol' in m || 'role' in m) && 'content' in m)) {
-      return input as AnyObj[];
-    }
+    if (input.every((m) => isObj(m) && ('rol' in m || 'role' in m) && 'content' in m)) return input as AnyObj[];
     for (let i = input.length - 1; i >= 0; i--) {
       const it: any = input[i];
       if (Array.isArray(it) && it.every((m) => isObj(m) && ('rol' in m || 'role' in m))) return it;
@@ -71,10 +62,7 @@ const extractAssistantReply = (items: AnyObj[], userText: string): string[] => {
     const role: Role = items[i]?.rol ?? items[i]?.role;
     if (role !== 'user') continue;
     const joined = toStrings(items[i]?.content).map(norm).join(' ');
-    if (q && joined.includes(q)) {
-      lastUserIdx = i;
-      break;
-    }
+    if (q && joined.includes(q)) { lastUserIdx = i; break; }
     if (lastUserIdx === -1) lastUserIdx = i;
   }
 
@@ -85,7 +73,6 @@ const extractAssistantReply = (items: AnyObj[], userText: string): string[] => {
       if (texts.length) return texts;
     }
   }
-
   for (let k = items.length - 1; k >= 0; k--) {
     const role: Role = items[k]?.rol ?? items[k]?.role;
     if (role === 'assistant') {
@@ -95,6 +82,21 @@ const extractAssistantReply = (items: AnyObj[], userText: string): string[] => {
   }
   return [];
 };
+/* ------------------------------------------------------------------------- */
+
+/* -------------------- Mensaje de usuario (full width azul) ---------------- */
+function UserMessageWide({ text }: { text: string }) {
+  return (
+    <div className="col-start-1 col-end-12 p-3">
+      <div className="flex flex-row gap-3">
+        <div className="flex-1 rounded-2xl border border-indigo-300/30 shadow-sm bg-indigo-600 text-white px-4 py-3 whitespace-pre-wrap break-words">
+          {text}
+        </div>
+      </div>
+    </div>
+  );
+}
+/* ------------------------------------------------------------------------- */
 
 export const AssistantPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -103,52 +105,56 @@ export const AssistantPage = () => {
   const [files, setFiles] = useState<ListedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  // AbortController para cancelar petición en curso
-  const chatAbortRef = useRef<AbortController | null>(null);
+  // Evita doble submit accidental (Enter+botón)
+  const submittingRef = useRef(false);
+  const lastQuestionRef = useRef<{ text: string; at: number } | null>(null);
 
+  // Crear/recuperar thread
   useEffect(() => {
     const saved = localStorage.getItem('threadId');
-    if (saved) {
-      setThreadId(saved);
-    } else {
-      createThreadUseCase().then((id) => {
-        setThreadId(id);
-        localStorage.setItem('threadId', id);
-      });
-    }
+    if (saved) setThreadId(saved);
+    else createThreadUseCase().then((id) => { setThreadId(id); localStorage.setItem('threadId', id); });
   }, []);
 
+  // Cargar archivos al montar/cambiar thread y tras subir
   const refreshFiles = async () => {
     if (!threadId) return;
     try {
       const url = `${import.meta.env.VITE_API_BASE}/files?threadId=${encodeURIComponent(threadId)}`;
       const resp = await fetch(url);
       if (!resp.ok) return;
-      const list = (await resp.json()) as { id: string; name: string; size?: number }[];
+      const list = (await resp.json()) as ListedFile[];
       setFiles(list ?? []);
-    } catch {
-      /* opcional */
-    }
+    } catch { /* silencio */ }
   };
+  useEffect(() => { refreshFiles(); }, [threadId]);
 
-  useEffect(() => {
-    refreshFiles();
-  }, [threadId]);
+  // Nuevo chat: limpia threadId y conversación
+  const handleResetThread = async () => {
+    localStorage.removeItem('threadId');
+    setMessages([]);
+    setFiles([]);
+    const id = await createThreadUseCase();
+    setThreadId(id);
+    localStorage.setItem('threadId', id);
+  };
 
   const handlePost = async (text: string) => {
     if (!threadId) return;
 
-    // Cancelar petición anterior
-    if (chatAbortRef.current) chatAbortRef.current.abort();
-    chatAbortRef.current = new AbortController();
+    // Anti-rebote sencillo
+    const now = Date.now();
+    const last = lastQuestionRef.current;
+    if (submittingRef.current) return;
+    if (last && last.text === text && now - last.at < 1500) return;
+    submittingRef.current = true;
+    lastQuestionRef.current = { text, at: now };
 
     setIsLoading(true);
     setMessages((prev) => [...prev, { text, isGpt: false }]);
 
     try {
-      const replies = await postQuestionUseCase(threadId, text, {
-        signal: chatAbortRef.current.signal,
-      });
+      const replies = await postQuestionUseCase(threadId, text); // llamada única
 
       const items = getItems(replies);
       const replyTexts = extractAssistantReply(items, text);
@@ -156,21 +162,13 @@ export const AssistantPage = () => {
       if (replyTexts.length > 0) {
         setMessages((prev) => [...prev, ...replyTexts.map((t) => ({ text: t, isGpt: true }))]);
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { text: 'No se encontró respuesta del asistente en el payload.', isGpt: true },
-        ]);
+        setMessages((prev) => [...prev, { text: 'No se encontró respuesta del asistente.', isGpt: true }]);
       }
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
-        console.error('postQuestionUseCase failed:', err);
-        setMessages((prev) => [
-          ...prev,
-          { text: '⚠️ Error al obtener la respuesta. Intenta de nuevo.', isGpt: true },
-        ]);
-      }
+    } catch (err) {
+      console.error('user-question failed:', err);
+      setMessages((prev) => [...prev, { text: '⚠️ Error al obtener la respuesta.', isGpt: true }]);
     } finally {
-      chatAbortRef.current = null;
+      submittingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -186,21 +184,14 @@ export const AssistantPage = () => {
         const form = new FormData();
         form.append('file', file);
         form.append('threadId', threadId);
-
-        const resp = await fetch(`${import.meta.env.VITE_API_BASE}/upload-file`, {
-          method: 'POST',
-          body: form,
-        });
+        const resp = await fetch(`${import.meta.env.VITE_API_BASE}/upload-file`, { method: 'POST', body: form });
         if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
       }
       await refreshFiles();
       (ev.target as HTMLInputElement).value = '';
     } catch (e) {
       console.error(e);
-      setMessages((prev) => [
-        ...prev,
-        { text: '⚠️ Error al subir archivo(s).', isGpt: true },
-      ]);
+      setMessages((prev) => [...prev, { text: '⚠️ Error al subir archivo(s).', isGpt: true }]);
     } finally {
       setIsUploading(false);
     }
@@ -208,104 +199,82 @@ export const AssistantPage = () => {
 
   const handleDownload = async (file: ListedFile) => {
     try {
-      const url = `${import.meta.env.VITE_API_BASE}/download-file?fileId=${encodeURIComponent(
-        file.id
-      )}`;
+      const url = `${import.meta.env.VITE_API_BASE}/download-file?fileId=${encodeURIComponent(file.id)}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
       const blob = await resp.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = file.name || `file-${file.id}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     } catch (e) {
       console.error(e);
-      setMessages((prev) => [
-        ...prev,
-        { text: `⚠️ Error al descargar "${file.name}".`, isGpt: true },
-      ]);
+      setMessages((prev) => [...prev, { text: `⚠️ Error al descargar "${file.name}".`, isGpt: true }]);
     }
   };
 
   return (
     <div className="chat-container">
-      {/* Botones más chicos */}
+      {/* Header mini con 'Nuevo chat' */}
+      <div className="mb-3 flex items-center justify-between">
+        <div />
+        <button
+          className="btn-primary text-sm px-3 py-1.5 rounded-lg"
+          onClick={handleResetThread}
+          title="Crear un nuevo thread y limpiar la conversación"
+        >
+          Nuevo chat
+        </button>
+      </div>
+
+      {/* Panel de archivos */}
       <div className="mb-4 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <label className="btn-primary text-sm px-3 py-1.5 rounded-lg cursor-pointer">
             {isUploading ? 'Subiendo…' : 'Subir archivos'}
-            <input
-              type="file"
-              className="hidden"
-              multiple
-              onChange={handleUpload}
-              disabled={isUploading}
-            />
+            <input type="file" className="hidden" multiple onChange={handleUpload} disabled={isUploading}/>
           </label>
-          <button
-            className="btn-primary text-sm px-3 py-1.5 rounded-lg"
-            onClick={refreshFiles}
-            disabled={!threadId || isUploading}
-          >
-            Actualizar lista
-          </button>
         </div>
 
-        {files.length > 0 && (
-          <div className="bg-white bg-opacity-5 rounded-xl p-3">
-            <div className="font-semibold mb-2">Archivos ({files.length})</div>
+        <div className="bg-white bg-opacity-5 rounded-xl p-3 border border-white/10">
+          <div className="font-semibold mb-2">
+            Archivos <span className="text-white/60">({files.length})</span>
+          </div>
+          {files.length === 0 ? (
+            <div className="text-sm text-white/70">No hay archivos aún.</div>
+          ) : (
             <ul className="space-y-2">
               {files.map((f) => (
                 <li key={f.id} className="flex items-center justify-between">
                   <span className="truncate">
-                    {f.name} {typeof f.size === 'number' ? `· ${(f.size / 1024).toFixed(1)} KB` : ''}
+                    {f.name}{' '}
+                    {typeof f.size === 'number' ? <span className="text-white/60">· {(f.size / 1024).toFixed(1)} KB</span> : null}
                   </span>
-                  <button
-                    className="btn-primary text-sm px-3 py-1.5 rounded-lg"
-                    onClick={() => handleDownload(f)}
-                    aria-label={`Descargar ${f.name}`}
-                  >
+                  <button className="btn-primary text-sm px-3 py-1.5 rounded-lg" onClick={() => handleDownload(f)}>
                     Descargar
                   </button>
                 </li>
               ))}
             </ul>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Chat */}
       <div className="chat-messages">
         <div className="grid grid-cols-12 gap-y-2">
           <GptMessage text="**Buen día**, soy tu asistente del *Código Civil* y **Leyes de Familia** de Chile. ¿En qué puedo ayudarte?" />
-
-          {messages.map((m, i) =>
-            m.isGpt ? (
-              <GptMessage key={i} text={m.text} />
-            ) : (
-              // Forzar texto blanco en la burbuja de la pregunta
-              <div key={i} className="text-white">
-                <MyMessage text={m.text} />
-              </div>
-            )
-          )}
-
+          {messages.map((m, i) => (m.isGpt ? <GptMessage key={i} text={m.text} /> : <UserMessageWide key={i} text={m.text} />))}
           {isLoading && (
-            <div className="col-start-1 col-end-12 fade-in">
+            <div className="col-start-1 col-end-12 fade-in grid ">
               <TypingLoader />
             </div>
           )}
         </div>
       </div>
 
-      <TextMessageBox
-        onSendMessage={handlePost}
-        placeholder="Escribe aquí lo que deseas"
-        disableCorrections
-      />
+      <TextMessageBox onSendMessage={handlePost} placeholder="Escribe aquí lo que deseas" disableCorrections />
     </div>
   );
 };
