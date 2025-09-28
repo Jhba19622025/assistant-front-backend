@@ -12,13 +12,7 @@ export const menuRoutes = [
     description: "Información del asistente",
     component: <AssistantPage />
   },
-  {
-    to: "/unit-test",
-    icon: "fa-solid fa-user",
-    title: "Unit test",
-    description: "Información de Unit Test",
-    component: <UnitTestPage />
-  },
+
 ];
 
 
