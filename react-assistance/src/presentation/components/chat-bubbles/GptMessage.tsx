@@ -4,11 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 
-// Tipado local para soportar `inline` sin filtrar hacia el DOM
-type CodeProps = React.ComponentPropsWithoutRef<'code'> & {
-  inline?: boolean;
-  node?: any;
-};
+// Tipado local: evita propagar 'inline' al DOM.
+type CodeProps = React.ComponentPropsWithoutRef<'code'> & { inline?: boolean; node?: any };
 
 const CodeBlock: React.FC<CodeProps> = ({ inline, className, children, node, ...props }) => {
   if (inline) {
@@ -34,10 +31,14 @@ const components: Components = {
 
 export const GptMessage: React.FC<{ text: string }> = ({ text }) => {
   return (
-    <div className="col-start-1 col-end-12 p-3">
+    <div className="col-start-1 col-end-12 px-2 py-1">
       <div className="flex flex-row gap-3">
-        {/* Borde y sombra sutil para enmarcar la respuesta */}
-        <div className="flex-1 bg-white bg-opacity-5 p-4 rounded-2xl border border-white/20 shadow-sm prose prose-invert max-w-none">
+        {/* Borde sólido + fondo tonal + tipografía compacta */}
+        <div className="flex-1 rounded-2xl border-2 border-white/20 shadow-md
+                        bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-[1px]
+                        p-4 prose prose-invert max-w-none
+                        prose-p:my-2 prose-headings:mt-2 prose-headings:mb-2
+                        prose-ul:my-2 prose-li:my-0">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
             {text}
           </ReactMarkdown>

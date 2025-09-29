@@ -1,5 +1,5 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
-import { AssistantPage, UnitTestPage } from '../pages';
+import { AssistantPage } from '../pages';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 
 
